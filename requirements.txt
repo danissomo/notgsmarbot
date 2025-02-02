@@ -1,0 +1,15 @@
+aiohttp==3.11.11
+beautifulsoup4==4.12.3
+cloudscraper==1.2.71
+colorlog==6.9.0
+dataclasses_json==0.6.7
+fake_useragent==2.0.3
+Jinja2==3.1.5
+lxml==5.3.0
+parsel==1.10.0
+pyppeteer==2.0.0
+python-telegram-bot==21.10
+PyYAML==6.0.2
+Requests==2.32.3
+stealth_requests==1.2.1
+yamldataclassconfig==1.5.0

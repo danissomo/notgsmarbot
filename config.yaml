@@ -1,0 +1,8 @@
+tg:
+  god_chat_id: null
+  token: null
+browser:
+  args: [
+          "--disable-gpu",
+          "--no-sandbox",
+        ]
