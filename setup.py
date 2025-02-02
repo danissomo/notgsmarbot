@@ -20,7 +20,7 @@ def read_requirements(filename):
 
 setup(
     name="notgsmarbot",
-    version="0.1.0",
+    version="0.1.1",
     packages=find_packages(),
     install_requires=read_requirements("requirements.txt"),
     author="Daniil",

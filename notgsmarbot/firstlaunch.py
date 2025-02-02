@@ -21,7 +21,7 @@ async def browser_check():
             headless=True,
             executablePath=CONFIG.browser.execurable,
             handleSIGINT=False,
-            args=None,
+            args=CONFIG.browser.args,
         )
         LOGGER.info("Browser started")
         LOGGER.info("Closing browser")
