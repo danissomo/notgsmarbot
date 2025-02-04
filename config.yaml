@@ -6,3 +6,7 @@ browser:
           "--disable-gpu",
           "--no-sandbox",
         ]
+  viewport: 
+    width: 450
+    height: 500
+    deviceScaleFactor: 2.0

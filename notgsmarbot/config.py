@@ -7,12 +7,14 @@ import argparse
 from pkg_resources import Distribution, resource_filename, get_distribution
 from email.parser import Parser
 from notgsmarbot.logs import LOGGER
+from typing import Optional
 
 
 @dataclass
 class Viewport(DataClassJsonMixin):
     width: int
     height: int
+    deviceScaleFactor: float
 
 
 @dataclass
@@ -23,12 +25,13 @@ class TGConfig(DataClassJsonMixin):
 
 @dataclass
 class BrowserConfig(DataClassJsonMixin):
-    args: list[str]
+    args: list[str] = field(default_factory=lambda: list())
     viewport: Viewport = field(
-        default_factory=lambda: Viewport(width=400, height=520),
+        default_factory=lambda: Viewport(
+            width=400, height=520, deviceScaleFactor=2),
         metadata={"dataclasses_json": {"mm_field": Viewport}}
     )
-    execurable: str = None
+    execurable: Optional[str] = None
 
 
 @dataclass
@@ -44,10 +47,15 @@ class Config(YamlDataClassConfig):
 CONFIG = Config()
 
 
-def parse_args():
-    distribution: Distribution = get_distribution("notgsmarbot")
+def parse_pkg_meta(pkg_name: str) -> dict:
+    distribution: Distribution = get_distribution(pkg_name)
     metadata = distribution.get_metadata("METADATA")
     metadata_dict = Parser().parsestr(metadata)
+    return metadata_dict
+
+
+def parse_args():
+    metadata_dict = parse_pkg_meta("notgsmarbot")
     ap = argparse.ArgumentParser(
         prog=metadata_dict["Name"],
         description=metadata_dict["Summary"],
@@ -55,20 +63,40 @@ def parse_args():
                           }, ver: {metadata_dict['Version']}",
     )
     ap.add_argument("-t", "--token", help="Your telegram token", default=None)
+    ap.add_argument("--width", type=int,
+                    help="width of viewport", default=None)
+    ap.add_argument("--height", type=int,
+                    help="height of viewpor", default=None)
+    ap.add_argument("--scale", type=float,
+                    help="scale of viewpor", default=None)
+    ap.add_argument("-d", "--dryrun", action="store_true",
+                    help="Do not update config")
     return ap.parse_args()
+
+
+def merge_args2cfg(args):
+    if args.token:
+        CONFIG.tg.token = args.token
+    if args.width:
+        CONFIG.browser.viewport.width = args.width
+    if args.height:
+        CONFIG.browser.viewport.height = args.height
+    if args.scale:
+        CONFIG.browser.viewport.deviceScaleFactor = args.scale
 
 
 def load_config():
     cliargs = parse_args()
-    if not os.path.exists("config.yaml"):
+    config_path = resource_filename("notgsmarbot", "files/config.yaml")
+    if not os.path.exists(config_path):
         cfg = CONFIG.to_dict()
         cfg.pop("FILE_PATH")
         LOGGER.critical('Create config.yaml:\n' + yaml.dump(cfg))
         exit()
-    config_path = resource_filename("notgsmarbot", "files/config.yaml")
     CONFIG.load(config_path)
-    if cliargs.token is not None:
-        CONFIG.tg.token = cliargs.token
+    merge_args2cfg(cliargs)
+    if not cliargs.dryrun:
+        LOGGER.debug("not dry-run")
         save_config()
     if os.name == "nt":
         CONFIG.browser.execurable = (

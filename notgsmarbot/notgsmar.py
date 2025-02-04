@@ -6,18 +6,18 @@ from telegram import (
     InlineKeyboardButton,
     InputMediaPhoto,
     Bot,
-    InlineQueryResultPhoto,
+    LinkPreviewOptions
 )
 from telegram.ext import (
     ApplicationBuilder,
     InlineQueryHandler,
     ChosenInlineResultHandler,
-    ContextTypes,
-    Application,
+    MessageHandler,
+    filters
 )
 from telegram.constants import InlineQueryResultLimit
 from uuid import uuid4
-from notgsmarbot.config import load_config, CONFIG
+from notgsmarbot.config import load_config, CONFIG, parse_pkg_meta
 from notgsmarbot.kimovil_api import (
     URL_TO_ANTUTU,
     get_device_by_querry_async,
@@ -32,6 +32,7 @@ import time
 import os
 from fake_useragent import UserAgent
 from notgsmarbot.firstlaunch import first_launch
+from pkg_resources import resource_filename
 
 RSP_LOAD_MOCK = InputTextMessageContent(
     "Поиск..",
@@ -101,7 +102,7 @@ async def render_html(html: str):
             .every(entry => entry.responseEnd && (performance.now() - entry.responseEnd) > 300);
         }"""
     )
-    img_data = await page.screenshot({"type": "jpeg", "fullPage": True})
+    img_data = await page.screenshot({"type": "png", "fullPage": True, "quality": 80})
     await asyncio.create_task(page.close())
     return img_data
 
@@ -125,6 +126,23 @@ async def chosen_inline_result(update: Update, context):
     await photo_change
 
 
+async def bot_send_greeting(update: Update, context):
+    bot: Bot = context.bot
+    chat_id = update.message.chat.id
+    greeting_path = resource_filename('notgsmarbot', 'files/greeting_ru.txt')
+    with open(greeting_path, 'r', encoding='utf-8') as f:
+        greeting_text = f.read()
+    await bot.send_message(
+        chat_id=chat_id,
+        text=greeting_text,
+        parse_mode="markdown",
+        link_preview_options=LinkPreviewOptions(
+            show_above_text=True,
+            url=parse_pkg_meta("notgsmarbot")["Home-page"]
+        )
+    )
+
+
 async def post_shutdown(app):
     LOGGER.info("Exiting...")
     if BROWSER is not None:
@@ -145,6 +163,7 @@ def main():
     )
     app.add_handler(InlineQueryHandler(inline_query_handler))
     app.add_handler(ChosenInlineResultHandler(chosen_inline_result))
+    app.add_handler(MessageHandler(filters.ALL, bot_send_greeting))
     app.post_shutdown = post_shutdown
     LOGGER.info("Приложение запущено")
     app.run_polling(close_loop=False)

@@ -20,7 +20,7 @@ def read_requirements(filename):
 
 setup(
     name="notgsmarbot",
-    version="0.1.1",
+    version="0.2.0",
     packages=find_packages(),
     install_requires=read_requirements("requirements.txt"),
     author="Daniil",
@@ -28,15 +28,15 @@ setup(
     description="Telegram bot for render specs from kimovil.com",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/notgsmarbot",
+    url="https://github.com/danissomo/notgsmarbot",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     package_data={
-        "notgsmarbot": ["files/show.jinja", "files/config.yaml"],
+        "notgsmarbot": ["files/*"],
     },
     entry_points={
         "console_scripts": [
