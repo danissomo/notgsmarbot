@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
 import os
+from pkg_resources import resource_filename
+import yaml
 
 
 ENV = os.getenv("ENV", "prod")
@@ -7,10 +9,20 @@ ENV = os.getenv("ENV", "prod")
 config_file = "config.yaml" if ENV == "prod" else "config.local.yaml"
 
 if os.path.exists(config_file):
-    with open(config_file, "r") as src, open(
-        "notgsmarbot/files/config.yaml", "w"
-    ) as dst:
-        dst.write(src.read())
+    try:  
+        existing_config = resource_filename('notgsmarbot', 'files/config.yaml')
+        with open(config_file) as new_f, open(existing_config) as old_f, open("notgsmarbot/files/config.yaml", "w") as combo_f:
+            new_data = yaml.safe_load(new_f)
+            old_data = yaml.safe_load(old_f)
+            combo_data = dict()
+            combo_data.update(new_data)
+            combo_data.update(old_data)
+            yaml.dump(combo_data, combo_f, default_flow_style=False)
+    except IndexError:
+        with open(config_file, "r") as src, open(
+            "notgsmarbot/files/config.yaml", "w"
+        ) as dst:
+            dst.write(src.read())
 
 
 def read_requirements(filename):
@@ -20,7 +32,7 @@ def read_requirements(filename):
 
 setup(
     name="notgsmarbot",
-    version="0.2.0",
+    version="0.3.0",
     packages=find_packages(),
     install_requires=read_requirements("requirements.txt"),
     author="Daniil",
@@ -40,7 +52,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "notgsmarbot = notgsmarbot.notgsmar:main", 
+            "notgsmarbot = notgsmarbot.notgsmar:main",
         ],
     },
 )

@@ -19,7 +19,7 @@ async def browser_check():
         LOGGER.info("Staring browser")
         browser = await launch(
             headless=True,
-            executablePath=CONFIG.browser.execurable,
+            executablePath=CONFIG.browser.executable,
             handleSIGINT=False,
             args=CONFIG.browser.args,
         )
@@ -46,8 +46,6 @@ async def start(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Your chat ID is {chat_id}")
     CONFIG.tg.god_chat_id = chat_id
     CONFIG.tg.first_launch = False
-    LOGGER.info("Saving config...")
-    save_config()
     LOGGER.info("Exiting...")
     context.application.stop_running()
 
@@ -71,9 +69,10 @@ def first_launch():
     app.run_polling(close_loop=False)
     LOGGER.info("App exited")
     LOGGER.info("Now browser check")
-
     try:
         asyncio.run(browser_check())
     except:
         exit(1)
+    LOGGER.info("Saving config...")
+    save_config()
     exit(0)

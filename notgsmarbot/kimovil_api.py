@@ -1,4 +1,6 @@
 import random
+import lxml.etree
+import lxml.html
 from parsel import Selector
 import stealth_requests as requests
 from stealth_requests import AsyncStealthSession
@@ -11,6 +13,7 @@ from lxml import html
 import jinja2
 from notgsmarbot.logs import LOGGER
 from pkg_resources import resource_filename
+from fp.fp import FreeProxy
 
 
 def URL_TO_ANTUTU(dev): return f"https://www.kimovil.com/ru/{dev}/antutu"
@@ -49,23 +52,7 @@ def _parse_vers(devices):
 
 
 def get_device_by_querry(qerry: str):
-    payload = {"name": qerry}
-    kimovil_url = SEARCH_DEV_URL
-    ua = UserAgent()
-    headers = {"User-Agent": str(ua.chrome)}
-    resp = requests.get(kimovil_url, params=payload, headers=headers)
-    try:
-        resp_json = resp.json()
-    except:
-        LOGGER.error("Json fucked up")
-        return []
-    try:
-        return _parse_vers(resp_json["results"])
-    except TypeError as e:
-        LOGGER.error(inspect.currentframe().f_code.co_name)
-        LOGGER.error(e)
-        LOGGER.error(f"resp_json type {type(resp_json)}")
-        return []
+    return asyncio.get_event_loop().run_until_complete(get_device_by_querry_async(qerry))
 
 
 async def get_device_by_querry_async(qerry: str):
@@ -73,6 +60,7 @@ async def get_device_by_querry_async(qerry: str):
     kimovil_url = SEARCH_DEV_URL
     ua = UserAgent()
     headers = {"User-Agent": str(ua.chrome)}
+
     async with AsyncStealthSession() as session:
         resp = await session.get(kimovil_url, params=payload, headers=headers)
     try:
@@ -105,11 +93,9 @@ async def get_antutu_async(url: str):
 
 
 def get_antutu_sync(url: str):
-    url = URL_TO_ANTUTU(url)
-    resp = requests.get(url)
-    selector = Selector(str(resp.content))
-    score = selector.xpath(ANTUTU_SCORE_XPATH).get()
-    return score
+    event_loop = asyncio.get_event_loop()
+    cor = get_antutu_async(url)
+    return event_loop.run_until_complete(cor)
 
 
 def URL_TO_SPECS(dev): return f"https://www.kimovil.com/en/where-to-buy-{dev}"
@@ -129,37 +115,21 @@ def _replace_protocol_relative_urls(html):
     return result
 
 
-def get_specs_card(url):
-    url = URL_TO_SPECS(url)
-    LOGGER.debug(url)
-    resp = requests.get(url)
-    header_html = resp.xpath(SPECS_HEADER_XPATH).pop()
-    header = html.tostring(header_html, encoding="unicode")
-    header = _replace_protocol_relative_urls(header)
-    footer = html.tostring(resp.xpath(
-        SPECS_CARD_XPATH).pop(), encoding="unicode")
-    page_html = JINJA_TEMPLATE.render(blue_header=header, footer=footer)
-    return page_html
-
-
-async def get_specs_card_async(url):
+async def get_specs_card_async(url) -> str | None:
     url = URL_TO_SPECS(url)
     async with AsyncStealthSession() as session:
-        for i in range(10):
-            try:
-                ua = UserAgent()
-                session_cor = session.get(
-                    url, headers={"User-Agent": str(ua.chrome)})
-                session_task = asyncio.create_task(session_cor)
-                await session_task
-                resp = session_task.result()
-                header_html = resp.xpath(SPECS_HEADER_XPATH).pop()
-                LOGGER.debug(f"OK {url}")
-                break
-            except IndexError:
-                LOGGER.warning(f"Cloudflare blocked rq {url}")
-                await asyncio.sleep(random.random())
+        session_cor = session.get(
+            url, headers={"User-Agent": str(UserAgent().chrome)})
+        session_task = asyncio.create_task(session_cor)
+        await session_task
 
+    resp = session_task.result()
+    try:
+        header_html = resp.xpath(SPECS_HEADER_XPATH).pop()
+    except IndexError:
+        LOGGER.warning(f"Cloudflare blocked rq {url}")
+        return None
+    LOGGER.debug(f"OK {url}")
     header = html.tostring(header_html, encoding="unicode")
     header = _replace_protocol_relative_urls(header)
     footer = html.tostring(resp.xpath(

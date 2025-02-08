@@ -10,6 +10,16 @@ from notgsmarbot.logs import LOGGER
 from typing import Optional
 
 
+PKG_META = None
+
+_BROWSER_PATHS = {
+    "nt" : [
+        "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+        "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
+    ],
+    "posix" : [None]
+}
+
 @dataclass
 class Viewport(DataClassJsonMixin):
     width: int
@@ -31,7 +41,7 @@ class BrowserConfig(DataClassJsonMixin):
             width=400, height=520, deviceScaleFactor=2),
         metadata={"dataclasses_json": {"mm_field": Viewport}}
     )
-    execurable: Optional[str] = None
+    executable: Optional[str] = None
 
 
 @dataclass
@@ -86,6 +96,7 @@ def merge_args2cfg(args):
 
 
 def load_config():
+    PKG_META = parse_pkg_meta("notgsmarbot")
     cliargs = parse_args()
     config_path = resource_filename("notgsmarbot", "files/config.yaml")
     if not os.path.exists(config_path):
@@ -94,34 +105,30 @@ def load_config():
         LOGGER.critical('Create config.yaml:\n' + yaml.dump(cfg))
         exit()
     CONFIG.load(config_path)
+    CONFIG.FILE_PATH = config_path
     merge_args2cfg(cliargs)
     if not cliargs.dryrun:
         LOGGER.debug("not dry-run")
         save_config()
-    if os.name == "nt":
-        CONFIG.browser.execurable = (
-            "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
-        )
-        if not os.path.exists(CONFIG.browser.execurable):
-            CONFIG.browser.execurable = (
-                "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
-            )
-        if not os.path.exists(CONFIG.browser.execurable):
-            LOGGER.critical(f"Why you don't have MS Edge on windows?🥴")
-            exit(1)
-    else:
-        if os.name != "posix":
-            LOGGER.warn(f"UNKNOW OS TYPE {os.name}, app may not work properly")
-        # lib will install its own
-        CONFIG.browser.execurable = None
+    
+    if CONFIG.browser.executable is None:
+        if _BROWSER_PATHS.get(os.name) is None:
+            LOGGER.warning(f"UNKNOW OS TYPE {os.name}, app may not work properly")
+        else:
+            for exe in _BROWSER_PATHS[os.name]:
+                if os.path.exists(exe):
+                    CONFIG.browser.executable = exe
+                    break
+            if CONFIG.browser.executable is None:
+                LOGGER.critical(f"Why you don't have MS Edge on windows?🥴")
     cfg = CONFIG.to_dict()
     cfg.pop("FILE_PATH")
     LOGGER.debug("Config:\n" + yaml.dump(cfg))
 
 
 def save_config():
-    config_path = resource_filename("notgsmarbot", "files/config.yaml")
-    with open(config_path, "w") as file:
+    LOGGER.debug(CONFIG.FILE_PATH)
+    with open(CONFIG.FILE_PATH, "w") as file:
         cfg = CONFIG.to_dict()
         cfg.pop("FILE_PATH")
         yaml.dump(cfg, file)

@@ -6,14 +6,16 @@ from telegram import (
     InlineKeyboardButton,
     InputMediaPhoto,
     Bot,
-    LinkPreviewOptions
+    LinkPreviewOptions,
+    InlineQueryResultPhoto,
+    InlineQueryResultCachedPhoto,
 )
 from telegram.ext import (
     ApplicationBuilder,
     InlineQueryHandler,
     ChosenInlineResultHandler,
     MessageHandler,
-    filters
+    filters,
 )
 from telegram.constants import InlineQueryResultLimit
 from uuid import uuid4
@@ -49,7 +51,7 @@ async def inline_query_handler(update: Update, context):
         return
 
     devices = (await get_device_by_querry_async(query))[
-        : InlineQueryResultLimit.MAX_ID_LENGTH
+        : 30
     ]
     results = []
 
@@ -67,43 +69,51 @@ async def inline_query_handler(update: Update, context):
             reply_markup=InlineKeyboardMarkup(keyboard),
             url=device["url"],
             hide_url=True,
+            thumbnail_height=100,
+            thumbnail_width=2
         )
         RQ_CACHE[article.id] = device["url"]
         results.append(article)
 
+    if len(results) == 0:
+        article = InlineQueryResultArticle(
+            id=str(uuid4()),
+            title="Not found",
+            input_message_content=InputTextMessageContent("Not found")
+        )
+        RQ_CACHE[article.id] = None
+        results.append(article)
+
     await update.inline_query.answer(results, cache_time=1, auto_pagination=True)
     LOGGER.info("Ответ на inline-запрос отправлен")
-    import time
-
-    s = time.time_ns()
-    LOGGER.debug(f"Start time {s}")
 
 
-async def render_html(html: str):
+async def render_html(html: str = None, get_html_task: asyncio.Task = None):
     """Рендер HTML в изображение."""
     global BROWSER
     if BROWSER is None:
         BROWSER = await launch(
             headless=True,
-            executablePath=CONFIG.browser.execurable,
+            executablePath=CONFIG.browser.executable,
             handleSIGINT=False,
-            args=CONFIG.browser.args,
+            args=CONFIG.browser.args + [f'--user-agent={UserAgent().chrome}'],
+            defaultViewport=CONFIG.browser.viewport.to_dict(),
         )
 
     page: Page = await BROWSER.newPage()
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(page.setUserAgent(UserAgent().chrome))
-        tg.create_task(page.setViewport(CONFIG.browser.viewport.to_dict()))
-        tg.create_task(page.setContent(html))
-    await page.waitForSelector("body")
+    if html is None:
+        await get_html_task
+        html = get_html_task.result()
+    await page.setContent(html)
     await page.waitForFunction(
-        """() => {
-        return performance.getEntriesByType('resource')
-            .every(entry => entry.responseEnd && (performance.now() - entry.responseEnd) > 300);
-        }"""
+        '''() => {
+            xp = '#margin > div.kc-container.dark.blue.heading > div > header > div > div.device-main-image.front > figure > a > img'
+            const img = document.querySelector(xp);
+            return img && img.complete && img.naturalWidth > 0;
+        }'''
     )
     img_data = await page.screenshot({"type": "png", "fullPage": True, "quality": 80})
-    await asyncio.create_task(page.close())
+    asyncio.create_task(page.close())
     return img_data
 
 
@@ -113,9 +123,11 @@ async def chosen_inline_result(update: Update, context):
     user = result.from_user.username
     LOGGER.debug(f"result: {result}")
     url = RQ_CACHE.pop(result.result_id)
+    if url is None:
+        return
     LOGGER.info(f"User {user} selected: {url}")
-    page_html = await get_specs_card_async(url)
-    page_img = await render_html(page_html)
+    page_html_task = asyncio.create_task(get_specs_card_async(url))
+    page_img = await render_html(get_html_task=page_html_task)
     bot: Bot = context.bot
     bot_send = bot.send_photo(
         chat_id=CONFIG.tg.god_chat_id, photo=page_img, caption=f'@{user} : {url}')
