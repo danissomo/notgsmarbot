@@ -16,9 +16,10 @@ if os.path.exists(config_file):
             old_data = yaml.safe_load(old_f)
             combo_data = dict()
             combo_data.update(new_data)
-            combo_data.update(old_data)
+            if old_data is not None:
+                combo_data.update(old_data)
             yaml.dump(combo_data, combo_f, default_flow_style=False)
-    except IndexError:
+    except IndexError| KeyError:
         with open(config_file, "r") as src, open(
             "notgsmarbot/files/config.yaml", "w"
         ) as dst:

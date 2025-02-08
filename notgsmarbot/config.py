@@ -59,7 +59,10 @@ CONFIG = Config()
 
 def parse_pkg_meta(pkg_name: str) -> dict:
     distribution: Distribution = get_distribution(pkg_name)
-    metadata = distribution.get_metadata("METADATA")
+    try:
+        metadata = distribution.get_metadata("PKG-INFO")
+    except:
+        metadata = distribution.get_metadata("METADATA")
     metadata_dict = Parser().parsestr(metadata)
     return metadata_dict
 

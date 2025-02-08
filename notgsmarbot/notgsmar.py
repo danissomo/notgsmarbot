@@ -96,6 +96,8 @@ async def render_html(html: str = None, get_html_task: asyncio.Task = None):
             headless=True,
             executablePath=CONFIG.browser.executable,
             handleSIGINT=False,
+            handleSIGTERM = False,
+            handleSIGHUP = False,
             args=CONFIG.browser.args + [f'--user-agent={UserAgent().chrome}'],
             defaultViewport=CONFIG.browser.viewport.to_dict(),
         )
