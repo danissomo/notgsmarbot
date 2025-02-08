@@ -11,8 +11,9 @@ ENV = os.getenv("ENV", "prod")
 config_file = "config.yaml" if ENV == "prod" else "config.local.yaml"
 
 if os.path.exists(config_file):
-    try:  
-        existing_config =files('notgsmarbot').joinpath('files/config.yaml').read_text()
+    try:
+        existing_config = files('notgsmarbot').joinpath(
+            'files/config.yaml').read_text()
         with open(config_file) as new_f, open("notgsmarbot/files/config.yaml", "w") as combo_f:
             new_data = yaml.safe_load(new_f)
             old_data = yaml.safe_load(existing_config)
@@ -21,7 +22,7 @@ if os.path.exists(config_file):
             if old_data is not None:
                 combo_data.update(old_data)
             yaml.dump(combo_data, combo_f, default_flow_style=False)
-    except IndexError| KeyError:
+    except IndexError | KeyError | ModuleNotFoundError:
         with open(config_file, "r") as src, open(
             "notgsmarbot/files/config.yaml", "w"
         ) as dst:
