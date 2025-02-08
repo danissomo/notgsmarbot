@@ -1,7 +1,9 @@
+import importlib.resources
 from setuptools import setup, find_packages
 import os
 from pkg_resources import resource_filename
 import yaml
+from importlib.resources import files
 
 
 ENV = os.getenv("ENV", "prod")
@@ -10,10 +12,10 @@ config_file = "config.yaml" if ENV == "prod" else "config.local.yaml"
 
 if os.path.exists(config_file):
     try:  
-        existing_config = resource_filename('notgsmarbot', 'files/config.yaml')
-        with open(config_file) as new_f, open(existing_config) as old_f, open("notgsmarbot/files/config.yaml", "w") as combo_f:
+        existing_config =files('notgsmarbot').joinpath('files/config.yaml').read_text()
+        with open(config_file) as new_f, open("notgsmarbot/files/config.yaml", "w") as combo_f:
             new_data = yaml.safe_load(new_f)
-            old_data = yaml.safe_load(old_f)
+            old_data = yaml.safe_load(existing_config)
             combo_data = dict()
             combo_data.update(new_data)
             if old_data is not None:
@@ -33,7 +35,7 @@ def read_requirements(filename):
 
 setup(
     name="notgsmarbot",
-    version="0.3.1",
+    version="0.3.2",
     packages=find_packages(),
     install_requires=read_requirements("requirements.txt"),
     author="Daniil",
