@@ -1,6 +1,3 @@
-import random
-import lxml.etree
-import lxml.html
 from parsel import Selector
 import stealth_requests as requests
 from stealth_requests import AsyncStealthSession
@@ -13,7 +10,6 @@ from lxml import html
 import jinja2
 from notgsmarbot.logs import LOGGER
 from pkg_resources import resource_filename
-from fp.fp import FreeProxy
 
 
 def URL_TO_ANTUTU(dev): return f"https://www.kimovil.com/ru/{dev}/antutu"
