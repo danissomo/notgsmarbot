@@ -119,10 +119,13 @@ def load_config():
             LOGGER.warning(f"UNKNOW OS TYPE {os.name}, app may not work properly")
         else:
             for exe in _BROWSER_PATHS[os.name]:
+                if exe is None:
+                    CONFIG.browser.executable = None
+                    break
                 if os.path.exists(exe):
                     CONFIG.browser.executable = exe
                     break
-            if CONFIG.browser.executable is None:
+            if CONFIG.browser.executable is None and os.name == 'nt':
                 LOGGER.critical(f"Why you don't have MS Edge on windows?🥴")
     cfg = CONFIG.to_dict()
     cfg.pop("FILE_PATH")
